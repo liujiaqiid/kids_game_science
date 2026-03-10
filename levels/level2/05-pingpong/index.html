@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L2-05 乒乓球对战</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        #gameCanvas {
+            border: 3px solid #4CAF50;
+            background: #16213e;
+            margin: 20px auto;
+            display: block;
+        }
+        .score-board {
+            font-size: 24px;
+            margin: 10px;
+        }
+        .player-score {
+            color: #4CAF50;
+        }
+        .ai-score {
+            color: #FF6B6B;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .task {
+            background: #0f3460;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .key {
+            display: inline-block;
+            background: #eee;
+            color: #333;
+            border: 2px solid #999;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 2px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .mode-select {
+            margin: 20px;
+        }
+        .mode-select button {
+            font-size: 16px;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏓 L2-05 乒乓球对战！</h1>
+    
+    <div class="score-board">
+        <span class="player-score">玩家：<span id="playerScore">0</span></span>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="ai-score">电脑：<span id="aiScore">0</span></span>
+    </div>
+    
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    
+    <div class="mode-select">
+        <button onclick="setMode('pve')">👤 vs 🤖 人机对战</button>
+        <button onclick="setMode('pvp')">👤 vs 👤 双人对战</button>
+    </div>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <p id="controlHint">玩家 1：<span class="key">W</span> <span class="key">S</span> | 玩家 2：<span class="key">↑</span> <span class="key">↓</span></p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 控制挡板反弹乒乓球</p>
+        <p>2. 让球穿过对方挡板得分</p>
+        <p>3. 挑战：先得 5 分获胜！</p>
+        
+        <h3>💡 新知识</h3>
+        <p><strong>多角色控制</strong>：同时监听多组按键，控制不同角色。</p>
+        <p><strong>简单 AI</strong>：电脑自动跟踪球的位置移动。</p>
+        <p><strong>物理反弹</strong>：球碰到挡板和墙壁会改变方向。</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        
+        let gameRunning = false;
+        let gameMode = "pve"; // pve 或 pvp
+        
+        // 球
+        let ball = {
+            x: 300,
+            y: 200,
+            radius: 8,
+            dx: 5,
+            dy: 5,
+            speed: 5
+        };
+        
+        // 玩家 1 挡板（左侧）
+        let player1 = {
+            x: 20,
+            y: 150,
+            width: 10,
+            height: 80,
+            speed: 6,
+            score: 0
+        };
+        
+        // 玩家 2 挡板（右侧）
+        let player2 = {
+            x: 570,
+            y: 150,
+            width: 10,
+            height: 80,
+            speed: 6,
+            score: 0
+        };
+        
+        // 按键状态
+        let keys = {
+            w: false,
+            s: false,
+            up: false,
+            down: false
+        };
+        
+        // 设置游戏模式
+        function setMode(mode) {
+            gameMode = mode;
+            let hint = document.getElementById("controlHint");
+            if (mode === "pve") {
+                hint.innerHTML = "玩家：<span class='key'>W</span> <span class='key'>S</span> | 电脑自动对战";
+            } else {
+                hint.innerHTML = "玩家 1：<span class='key'>W</span> <span class='key'>S</span> | 玩家 2：<span class='key'>↑</span> <span class='key'>↓</span>";
+            }
+        }
+        
+        // 重置球
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.speed = 5;
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+            ball.dy = (Math.random() * 2 - 1) * ball.speed;
+        }
+        
+        // 画球
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FFF";
+            ctx.fill();
+            ctx.closePath();
+        }
+        
+        // 画挡板
+        function drawPaddle(paddle, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+        }
+        
+        // 画中线
+        function drawCenterLine() {
+            ctx.setLineDash([10, 10]);
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        // 更新球的位置
+        function updateBall() {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            
+            // 上下墙壁反弹
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                ball.dy = -ball.dy;
+            }
+            
+            // 左侧挡板碰撞
+            if (ball.x - ball.radius < player1.x + player1.width &&
+                ball.y > player1.y &&
+                ball.y < player1.y + player1.height) {
+                
+                // 根据击中位置改变角度
+                let hitPoint = (ball.y - player1.y) / player1.height;
+                ball.dx = Math.abs(ball.dx) * 1.05; // 加速
+                ball.dy = (hitPoint - 0.5) * 10;
+                
+                // 限制最大速度
+                let maxSpeed = 12;
+                if (Math.abs(ball.dx) > maxSpeed) ball.dx = maxSpeed;
+            }
+            
+            // 右侧挡板碰撞
+            if (ball.x + ball.radius > player2.x &&
+                ball.y > player2.y &&
+                ball.y < player2.y + player2.height) {
+                
+                let hitPoint = (ball.y - player2.y) / player2.height;
+                ball.dx = -Math.abs(ball.dx) * 1.05;
+                ball.dy = (hitPoint - 0.5) * 10;
+                
+                let maxSpeed = 12;
+                if (Math.abs(ball.dx) > maxSpeed) ball.dx = -maxSpeed;
+            }
+            
+            // 得分判断
+            if (ball.x < 0) {
+                player2.score++;
+                updateScore();
+                checkWin();
+                resetBall();
+            } else if (ball.x > canvas.width) {
+                player1.score++;
+                updateScore();
+                checkWin();
+                resetBall();
+            }
+        }
+        
+        // 更新玩家 1
+        function updatePlayer1() {
+            if (keys.w && player1.y > 0) {
+                player1.y -= player1.speed;
+            }
+            if (keys.s && player1.y < canvas.height - player1.height) {
+                player1.y += player1.speed;
+            }
+        }
+        
+        // 更新玩家 2（电脑 AI 或玩家 2）
+        function updatePlayer2() {
+            if (gameMode === "pve") {
+                // 简单 AI：跟踪球的 y 位置
+                let center = player2.y + player2.height / 2;
+                if (center < ball.y - 10) {
+                    player2.y += player2.speed * 0.8; // AI 速度稍慢
+                } else if (center > ball.y + 10) {
+                    player2.y -= player2.speed * 0.8;
+                }
+            } else {
+                // 玩家 2 控制
+                if (keys.up && player2.y > 0) {
+                    player2.y -= player2.speed;
+                }
+                if (keys.down && player2.y < canvas.height - player2.height) {
+                    player2.y += player2.speed;
+                }
+            }
+            
+            // 边界限制
+            if (player2.y < 0) player2.y = 0;
+            if (player2.y > canvas.height - player2.height) player2.y = canvas.height - player2.height;
+        }
+        
+        // 更新分数显示
+        function updateScore() {
+            document.getElementById("playerScore").innerText = player1.score;
+            document.getElementById("aiScore").innerText = player2.score;
+        }
+        
+        // 检查胜利
+        function checkWin() {
+            if (player1.score >= 5 || player2.score >= 5) {
+                gameRunning = false;
+                let winner = player1.score >= 5 ? "玩家 1" : (gameMode === "pve" ? "电脑" : "玩家 2");
+                alert("🎉 " + winner + " 获胜！");
+                document.getElementById("startBtn").innerText = "🎮 重新开始";
+            }
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.fillStyle = "#16213e";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawCenterLine();
+            drawBall();
+            drawPaddle(player1, "#4CAF50");
+            drawPaddle(player2, "#FF6B6B");
+            
+            updateBall();
+            updatePlayer1();
+            updatePlayer2();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (gameRunning) return;
+            
+            player1.score = 0;
+            player2.score = 0;
+            player1.y = 150;
+            player2.y = 150;
+            updateScore();
+            
+            resetBall();
+            gameRunning = true;
+            document.getElementById("startBtn").innerText = "🎮 游戏中...";
+            gameLoop();
+        }
+        
+        // 键盘监听
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "w" || e.key === "W") keys.w = true;
+            if (e.key === "s" || e.key === "S") keys.s = true;
+            if (e.key === "ArrowUp") keys.up = true;
+            if (e.key === "ArrowDown") keys.down = true;
+        });
+        
+        document.addEventListener("keyup", function(e) {
+            if (e.key === "w" || e.key === "W") keys.w = false;
+            if (e.key === "s" || e.key === "S") keys.s = false;
+            if (e.key === "ArrowUp") keys.up = false;
+            if (e.key === "ArrowDown") keys.down = false;
+        });
+        
+        // 初始画面
+        ctx.fillStyle = "#16213e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawCenterLine();
+        ctx.fillStyle = "#FFF";
+        ctx.font = "20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("点击开始游戏", canvas.width / 2, 200);
+    </script>
+</body>
+</html>
