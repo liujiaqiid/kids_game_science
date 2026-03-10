@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L1-06 贪吃蛇基础版</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f0f8ff;
+        }
+        #gameCanvas {
+            border: 3px solid #333;
+            background: #222;
+            margin: 20px auto;
+            display: block;
+        }
+        .score-board {
+            font-size: 20px;
+            margin: 10px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .task {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .key {
+            display: inline-block;
+            background: #eee;
+            border: 2px solid #999;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 2px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐍 L1-06 贪吃蛇基础版！</h1>
+    
+    <div class="score-board">
+        得分：<span id="score">0</span> / 5
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <p>用 <span class="key">↑</span> <span class="key">↓</span> <span class="key">←</span> <span class="key">→</span> 控制蛇移动</p>
+        <p>吃到红色食物得分，吃到 5 个就通关！</p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 控制小蛇吃到食物</p>
+        <p>2. 注意不要撞到墙壁和自己</p>
+        <p>3. 挑战：吃到 5 个食物通关！</p>
+        
+        <h3>💡 小知识</h3>
+        <p><strong>数组</strong>：一串数据的集合。蛇的身体就是用数组存储的。</p>
+        <p><strong>游戏循环</strong>：游戏不停重复"移动→检测→绘制"这个过程。</p>
+        <p>这个简化版只有基础功能，完整的贪吃蛇在 <code>practice/snake/</code> 里！</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        
+        let box = 20;
+        let snake = [];
+        let food = {};
+        let direction = "";
+        let score = 0;
+        let game = null;
+        let gameRunning = false;
+        
+        function initGame() {
+            snake = [];
+            snake[0] = { x: 10 * box, y: 10 * box };
+            direction = "RIGHT";
+            score = 0;
+            document.getElementById("score").innerText = score;
+            generateFood();
+        }
+        
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * 19) * box,
+                y: Math.floor(Math.random() * 19) * box
+            };
+        }
+        
+        function draw() {
+            // 清空画布
+            ctx.fillStyle = "#222";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 画蛇
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = (i === 0) ? "#4CAF50" : "#8BC34A";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeStyle = "#333";
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+            }
+            
+            // 画食物
+            ctx.fillStyle = "#FF5252";
+            ctx.fillRect(food.x, food.y, box, box);
+            
+            // 移动蛇头
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+            
+            if (direction === "LEFT") snakeX -= box;
+            if (direction === "UP") snakeY -= box;
+            if (direction === "RIGHT") snakeX += box;
+            if (direction === "DOWN") snakeY += box;
+            
+            // 吃到食物
+            if (snakeX === food.x && snakeY === food.y) {
+                score++;
+                document.getElementById("score").innerText = score;
+                generateFood();
+                
+                // 通关判断
+                if (score >= 5) {
+                    gameOver(true);
+                    return;
+                }
+            } else {
+                snake.pop();
+            }
+            
+            // 碰撞检测
+            if (snakeX < 0 || snakeY < 0 || 
+                snakeX >= canvas.width || snakeY >= canvas.height ||
+                collision(snakeX, snakeY)) {
+                gameOver(false);
+                return;
+            }
+            
+            // 添加新蛇头
+            let newHead = { x: snakeX, y: snakeY };
+            snake.unshift(newHead);
+        }
+        
+        function collision(x, y) {
+            for (let i = 0; i < snake.length; i++) {
+                if (x === snake[i].x && y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function gameOver(win) {
+            gameRunning = false;
+            clearInterval(game);
+            if (win) {
+                alert("🎉 恭喜你通关啦！得分：" + score);
+            } else {
+                alert("😢 游戏结束！得分：" + score);
+            }
+            document.getElementById("startBtn").innerText = "🎮 重新开始";
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            initGame();
+            gameRunning = true;
+            document.getElementById("startBtn").innerText = "🎮 游戏中...";
+            game = setInterval(draw, 200);
+        }
+        
+        document.addEventListener("keydown", function(event) {
+            if (!gameRunning) return;
+            
+            if (event.keyCode === 37 && direction !== "RIGHT") {
+                direction = "LEFT";
+            } else if (event.keyCode === 38 && direction !== "DOWN") {
+                direction = "UP";
+            } else if (event.keyCode === 39 && direction !== "LEFT") {
+                direction = "RIGHT";
+            } else if (event.keyCode === 40 && direction !== "UP") {
+                direction = "DOWN";
+            }
+        });
+        
+        // 初始画面
+        ctx.fillStyle = "#222";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px Arial";
+        ctx.fillText("点击开始游戏", 140, 200);
+    </script>
+</body>
+</html>

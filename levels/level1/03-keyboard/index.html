@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L1-03 听我指挥 - 键盘控制</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f0f8ff;
+        }
+        #gameArea {
+            width: 600px;
+            height: 400px;
+            border: 3px solid #333;
+            margin: 20px auto;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        #player {
+            width: 50px;
+            height: 50px;
+            font-size: 40px;
+            position: absolute;
+            left: 275px;
+            top: 175px;
+            transition: all 0.08s;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 20px;
+            padding: 15px 25px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .position {
+            font-size: 18px;
+            color: #333;
+            margin: 10px;
+        }
+        .task {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .key {
+            display: inline-block;
+            background: #eee;
+            border: 2px solid #999;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 2px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 L1-03 听我指挥！</h1>
+    
+    <div class="position">
+        位置：X = <span id="posX">275</span>, Y = <span id="posY">175</span>
+        | 移动次数：<span id="moveCount">0</span>
+    </div>
+    
+    <div id="gameArea">
+        <div id="player">🐱</div>
+    </div>
+    
+    <div class="controls">
+        <p>用键盘控制小猫移动：</p>
+        <div>
+            <span class="key">W</span> 或 <span class="key">↑</span> 向上
+        </div>
+        <div>
+            <span class="key">A</span> 或 <span class="key">←</span> 向左
+            <span class="key">S</span> 或 <span class="key">↓</span> 向下
+            <span class="key">D</span> 或 <span class="key">→</span> 向右
+        </div>
+        <p>按 <span class="key">空格</span> 让小猫跳一下！</p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 使用键盘控制小猫在草地上散步</p>
+        <p>2. 观察位置变化</p>
+        <p>3. 挑战：按顺序走到 4 个角落！</p>
+        
+        <h3>💡 小知识</h3>
+        <p><strong>事件监听</strong>：电脑一直在"监听"键盘，等待你按键。</p>
+        <p><strong>event.key</strong>：告诉你按了哪个键。</p>
+        <p><strong>if...else</strong>：根据不同的键执行不同的代码。</p>
+    </div>
+
+    <script>
+        let playerX = 275;
+        let playerY = 175;
+        let step = 25;
+        let moves = 0;
+        
+        let player = document.getElementById("player");
+        
+        function updatePosition() {
+            player.style.left = playerX + "px";
+            player.style.top = playerY + "px";
+            document.getElementById("posX").innerText = playerX;
+            document.getElementById("posY").innerText = playerY;
+            moves++;
+            document.getElementById("moveCount").innerText = moves;
+        }
+        
+        function moveUp() {
+            if (playerY > 0) {
+                playerY = playerY - step;
+                player.innerHTML = "🐱";
+                updatePosition();
+            }
+        }
+        
+        function moveDown() {
+            if (playerY < 350) {
+                playerY = playerY + step;
+                player.innerHTML = "🐱";
+                updatePosition();
+            }
+        }
+        
+        function moveLeft() {
+            if (playerX > 0) {
+                playerX = playerX - step;
+                player.innerHTML = "🐈";
+                updatePosition();
+            }
+        }
+        
+        function moveRight() {
+            if (playerX < 550) {
+                playerX = playerX + step;
+                player.innerHTML = "🐈";
+                updatePosition();
+            }
+        }
+        
+        function jump() {
+            player.innerHTML = "🙀";
+            setTimeout(() => {
+                player.innerHTML = "🐱";
+            }, 300);
+        }
+        
+        document.addEventListener("keydown", function(event) {
+            console.log("按下的键:", event.key);
+            
+            if (event.key === "w" || event.key === "W" || event.key === "ArrowUp") {
+                moveUp();
+            }
+            if (event.key === "s" || event.key === "S" || event.key === "ArrowDown") {
+                moveDown();
+            }
+            if (event.key === "a" || event.key === "A" || event.key === "ArrowLeft") {
+                moveLeft();
+            }
+            if (event.key === "d" || event.key === "D" || event.key === "ArrowRight") {
+                moveRight();
+            }
+            if (event.key === " ") {
+                jump();
+            }
+        });
+    </script>
+</body>
+</html>

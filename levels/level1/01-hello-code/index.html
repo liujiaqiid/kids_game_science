@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L1-01 你好，代码世界</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f0f8ff;
+        }
+        #message {
+            font-size: 24px;
+            color: #333;
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            background: white;
+        }
+        button {
+            font-size: 18px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .task {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 L1-01 你好，代码世界！</h1>
+    
+    <div id="message">点击下面的按钮，让我跟你打招呼！</div>
+    
+    <button onclick="sayHello()">👋 打招呼</button>
+    <button onclick="changeColor()">🎨 换颜色</button>
+    <button onclick="showSecret()">🔮 显示彩蛋</button>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 点击"打招呼"按钮，看看会发生什么？</p>
+        <p>2. 点击"换颜色"，改变消息框的颜色</p>
+        <p>3. 找到彩蛋！</p>
+        
+        <h3>💡 小知识</h3>
+        <p><strong>函数</strong>就像是一个魔法咒语，调用它就能执行一段代码。</p>
+        <p><strong>onclick</strong> 是"当点击时"的意思，告诉电脑点击按钮后要做什么。</p>
+    </div>
+
+    <script>
+        // 这是第一个函数 - 打招呼
+        function sayHello() {
+            let messages = [
+                "你好，小程序员！👋",
+                "欢迎来到代码世界！🚀",
+                "今天我们要学习编程啦！💻",
+                "你准备好了吗？😄"
+            ];
+            // 随机选一个消息
+            let randomIndex = Math.floor(Math.random() * messages.length);
+            document.getElementById("message").innerText = messages[randomIndex];
+        }
+        
+        // 改变颜色的函数
+        function changeColor() {
+            let colors = ["#ffebee", "#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5"];
+            let randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.getElementById("message").style.background = randomColor;
+        }
+        
+        // 彩蛋函数
+        function showSecret() {
+            alert("🎉 恭喜你发现了彩蛋！\n\n编程就像寻宝，继续探索吧！");
+        }
+    </script>
+</body>
+</html>

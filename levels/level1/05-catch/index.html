@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L1-05 接住它！</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f0f8ff;
+        }
+        #gameArea {
+            width: 600px;
+            height: 400px;
+            border: 3px solid #333;
+            margin: 20px auto;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 80%);
+            position: relative;
+            overflow: hidden;
+        }
+        #player {
+            width: 80px;
+            height: 40px;
+            background: #FF6B6B;
+            border-radius: 10px;
+            position: absolute;
+            left: 260px;
+            bottom: 10px;
+            font-size: 30px;
+            text-align: center;
+            line-height: 40px;
+        }
+        .falling {
+            width: 40px;
+            height: 40px;
+            font-size: 30px;
+            position: absolute;
+            text-align: center;
+        }
+        .score-board {
+            font-size: 20px;
+            margin: 10px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .task {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        #startBtn {
+            font-size: 20px;
+            padding: 15px 30px;
+            background: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍎 L1-05 接住它！</h1>
+    
+    <div class="score-board">
+        得分：<span id="score">0</span> | 生命：<span id="lives">❤️❤️❤️</span>
+    </div>
+    
+    <div id="gameArea">
+        <div id="player">🧺</div>
+    </div>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <p>用 ← → 方向键或 A D 键移动篮子接苹果</p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 移动篮子接住掉落的苹果 🍎</p>
+        <p>2. 躲避炸弹 💣</p>
+        <p>3. 挑战：得到 20 分！</p>
+        
+        <h3>💡 小知识</h3>
+        <p><strong>碰撞检测</strong>：判断两个物体是否碰到一起。</p>
+        <p>如果两个物体的位置重叠了，就是"碰撞"了！</p>
+        <p>游戏中很多效果都用到了碰撞检测：接住东西、撞到敌人、吃到金币...</p>
+    </div>
+
+    <script>
+        let gameArea = document.getElementById("gameArea");
+        let player = document.getElementById("player");
+        let scoreElement = document.getElementById("score");
+        let livesElement = document.getElementById("lives");
+        
+        let playerX = 260;
+        let score = 0;
+        let lives = 3;
+        let gameRunning = false;
+        let fallInterval = null;
+        let moveInterval = null;
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            // 重置游戏
+            score = 0;
+            lives = 3;
+            playerX = 260;
+            updateScore();
+            updateLives();
+            player.style.left = playerX + "px";
+            
+            // 清除旧的掉落物
+            let oldFalling = document.querySelectorAll(".falling");
+            oldFalling.forEach(item => item.remove());
+            
+            gameRunning = true;
+            document.getElementById("startBtn").innerText = "🎮 游戏中...";
+            
+            // 开始生成掉落物
+            fallInterval = setInterval(createFallingObject, 1000);
+            
+            // 开始移动掉落物
+            moveInterval = setInterval(moveFallingObjects, 50);
+        }
+        
+        function createFallingObject() {
+            if (!gameRunning) return;
+            
+            let item = document.createElement("div");
+            item.className = "falling";
+            
+            // 80% 概率是苹果，20% 概率是炸弹
+            if (Math.random() < 0.8) {
+                item.innerHTML = "🍎";
+                item.dataset.type = "apple";
+            } else {
+                item.innerHTML = "💣";
+                item.dataset.type = "bomb";
+            }
+            
+            item.style.left = Math.random() * 560 + "px";
+            item.style.top = "0px";
+            gameArea.appendChild(item);
+        }
+        
+        function moveFallingObjects() {
+            if (!gameRunning) return;
+            
+            let fallingItems = document.querySelectorAll(".falling");
+            let playerRect = player.getBoundingClientRect();
+            
+            fallingItems.forEach(item => {
+                let top = parseInt(item.style.top || 0);
+                top += 3; // 下落速度
+                item.style.top = top + "px";
+                
+                // 检查是否接住
+                if (top >= 350 && top <= 370) {
+                    let itemRect = item.getBoundingClientRect();
+                    let itemLeft = parseInt(item.style.left || 0);
+                    
+                    // 碰撞检测
+                    if (itemLeft + 40 > playerX && itemLeft < playerX + 80) {
+                        if (item.dataset.type === "apple") {
+                            score++;
+                            updateScore();
+                        } else {
+                            lives--;
+                            updateLives();
+                            if (lives <= 0) {
+                                gameOver();
+                            }
+                        }
+                        item.remove();
+                    }
+                }
+                
+                // 超出底部
+                if (top > 400) {
+                    item.remove();
+                }
+            });
+        }
+        
+        function updateScore() {
+            scoreElement.innerText = score;
+        }
+        
+        function updateLives() {
+            let hearts = "";
+            for (let i = 0; i < lives; i++) {
+                hearts += "❤️";
+            }
+            livesElement.innerText = hearts;
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(fallInterval);
+            clearInterval(moveInterval);
+            document.getElementById("startBtn").innerText = "🎮 重新开始";
+            alert("游戏结束！你的得分是：" + score);
+        }
+        
+        // 键盘控制
+        document.addEventListener("keydown", function(event) {
+            if (!gameRunning) return;
+            
+            if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A") {
+                if (playerX > 0) {
+                    playerX -= 30;
+                    player.style.left = playerX + "px";
+                }
+            }
+            if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") {
+                if (playerX < 520) {
+                    playerX += 30;
+                    player.style.left = playerX + "px";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
