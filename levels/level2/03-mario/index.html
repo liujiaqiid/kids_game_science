@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L2-03 超级玛丽简化版</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #5C94FC;
+            color: #333;
+        }
+        #gameCanvas {
+            border: 3px solid #000;
+            background: #5C94FC;
+            margin: 20px auto;
+            display: block;
+        }
+        .info-board {
+            font-size: 20px;
+            margin: 10px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #E52521;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .task {
+            background: #FFF;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .key {
+            display: inline-block;
+            background: #eee;
+            border: 2px solid #999;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 2px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍄 L2-03 超级玛丽简化版！</h1>
+    
+    <div class="info-board">
+        关卡：<span id="level">1</span> | 金币：<span id="coins">0</span> | 生命：<span id="lives">❤️❤️❤️</span>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <p>
+            <span class="key">A</span> 左移 | 
+            <span class="key">D</span> 右移 | 
+            <span class="key">W</span> 或 <span class="key">空格</span> 跳跃
+        </p>
+        <p>收集金币，踩扁敌人，到达终点旗杆！</p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 控制玛丽兄弟移动和跳跃</p>
+        <p>2. 收集所有金币</p>
+        <p>3. 踩扁红色敌人或跳过它们</p>
+        <p>4. 到达旗杆通关！</p>
+        
+        <h3>💡 新知识</h3>
+        <p><strong>函数封装</strong>：把重复的代码写成函数，方便调用。</p>
+        <p><strong>关卡数据</strong>：用数组存储平台的 position，便于设计关卡。</p>
+        <p><strong>重力模拟</strong>：角色会受重力影响下落。</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        
+        let gameRunning = false;
+        let coins = 0;
+        let lives = 3;
+        let currentLevel = 1;
+        
+        // 玩家
+        let player = {
+            x: 50,
+            y: 300,
+            width: 30,
+            height: 40,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            jumpPower: -12,
+            grounded: false,
+            color: "#E52521"
+        };
+        
+        // 重力
+        let gravity = 0.6;
+        
+        // 关卡数据
+        let platforms = [];
+        let enemies = [];
+        let coinObjects = [];
+        let flag = {};
+        
+        // 按键状态
+        let keys = {
+            left: false,
+            right: false,
+            jump: false
+        };
+        
+        // 初始化关卡 1
+        function initLevel1() {
+            platforms = [
+                // 地面
+                { x: 0, y: 370, width: 800, height: 30, color: "#8B4513" },
+                // 平台
+                { x: 200, y: 280, width: 100, height: 20, color: "#CD853F" },
+                { x: 350, y: 220, width: 100, height: 20, color: "#CD853F" },
+                { x: 500, y: 280, width: 100, height: 20, color: "#CD853F" },
+                // 高台
+                { x: 650, y: 180, width: 80, height: 20, color: "#CD853F" }
+            ];
+            
+            enemies = [
+                { x: 300, y: 340, width: 30, height: 30, vx: -2, color: "#FF0000", alive: true },
+                { x: 550, y: 340, width: 30, height: 30, vx: -2, color: "#FF0000", alive: true }
+            ];
+            
+            coinObjects = [
+                { x: 230, y: 240, collected: false },
+                { x: 380, y: 180, collected: false },
+                { x: 530, y: 240, collected: false },
+                { x: 680, y: 140, collected: false },
+                { x: 750, y: 340, collected: false }
+            ];
+            
+            flag = { x: 750, y: 100, height: 80 };
+            
+            player.x = 50;
+            player.y = 300;
+            player.vx = 0;
+            player.vy = 0;
+        }
+        
+        // 画玩家
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // 帽子
+            ctx.fillStyle = "#E52521";
+            ctx.fillRect(player.x - 5, player.y, player.width + 10, 10);
+            
+            // 眼睛
+            ctx.fillStyle = "#FFF";
+            ctx.fillRect(player.x + 18, player.y + 10, 8, 8);
+            ctx.fillStyle = "#000";
+            ctx.fillRect(player.x + 22, player.y + 12, 4, 4);
+        }
+        
+        // 画平台
+        function drawPlatforms() {
+            for (let p of platforms) {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+                
+                // 平台边框
+                ctx.strokeStyle = "#000";
+                ctx.strokeRect(p.x, p.y, p.width, p.height);
+            }
+        }
+        
+        // 画敌人
+        function drawEnemies() {
+            for (let e of enemies) {
+                if (e.alive) {
+                    ctx.fillStyle = e.color;
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                    
+                    // 眼睛
+                    ctx.fillStyle = "#FFF";
+                    ctx.fillRect(e.x + 5, e.y + 5, 8, 8);
+                    ctx.fillRect(e.x + 17, e.y + 5, 8, 8);
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(e.x + 7, e.y + 7, 4, 4);
+                    ctx.fillRect(e.x + 19, e.y + 7, 4, 4);
+                }
+            }
+        }
+        
+        // 画金币
+        function drawCoins() {
+            for (let c of coinObjects) {
+                if (!c.collected) {
+                    ctx.fillStyle = "#FFD700";
+                    ctx.beginPath();
+                    ctx.arc(c.x + 10, c.y + 10, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#DAA520";
+                    ctx.stroke();
+                    
+                    // 金币符号
+                    ctx.fillStyle = "#DAA520";
+                    ctx.font = "14px Arial";
+                    ctx.fillText("$", c.x + 6, c.y + 15);
+                }
+            }
+        }
+        
+        // 画旗杆
+        function drawFlag() {
+            // 杆子
+            ctx.fillStyle = "#000";
+            ctx.fillRect(flag.x, flag.y, 5, flag.height);
+            
+            // 旗帜
+            ctx.fillStyle = "#00FF00";
+            ctx.beginPath();
+            ctx.moveTo(flag.x + 5, flag.y);
+            ctx.lineTo(flag.x + 40, flag.y + 15);
+            ctx.lineTo(flag.x + 5, flag.y + 30);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 底座
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(flag.x - 10, flag.y + flag.height, 25, 10);
+        }
+        
+        // 更新玩家物理
+        function updatePlayer() {
+            // 水平移动
+            if (keys.left) player.vx = -player.speed;
+            else if (keys.right) player.vx = player.speed;
+            else player.vx = 0;
+            
+            player.x += player.vx;
+            
+            // 边界限制
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+            
+            // 跳跃
+            if (keys.jump && player.grounded) {
+                player.vy = player.jumpPower;
+                player.grounded = false;
+            }
+            
+            // 重力
+            player.vy += gravity;
+            player.y += player.vy;
+            
+            // 地面检测
+            player.grounded = false;
+            for (let p of platforms) {
+                if (player.x < p.x + p.width &&
+                    player.x + player.width > p.x &&
+                    player.y + player.height > p.y &&
+                    player.y + player.height < p.y + p.height &&
+                    player.vy >= 0) {
+                    player.y = p.y - player.height;
+                    player.vy = 0;
+                    player.grounded = true;
+                }
+            }
+            
+            // 掉出底部
+            if (player.y > canvas.height) {
+                playerDie();
+            }
+        }
+        
+        // 更新敌人
+        function updateEnemies() {
+            for (let e of enemies) {
+                if (e.alive) {
+                    e.x += e.vx;
+                    
+                    // 敌人来回移动
+                    if (e.x <= 200 || e.x >= 600) {
+                        e.vx = -e.vx;
+                    }
+                    
+                    // 碰撞检测 - 玩家碰到敌人
+                    if (player.x < e.x + e.width &&
+                        player.x + player.width > e.x &&
+                        player.y < e.y + e.height &&
+                        player.y + player.height > e.y) {
+                        
+                        // 从上方踩到敌人
+                        if (player.vy > 0 && player.y + player.height - player.vy <= e.y + e.height / 2) {
+                            e.alive = false;
+                            player.vy = -8; // 弹起
+                            coins += 100;
+                            updateScore();
+                        } else {
+                            playerDie();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 收集金币
+        function collectCoins() {
+            for (let c of coinObjects) {
+                if (!c.collected) {
+                    if (player.x < c.x + 20 &&
+                        player.x + player.width > c.x &&
+                        player.y < c.y + 20 &&
+                        player.y + player.height > c.y) {
+                        c.collected = true;
+                        coins += 50;
+                        updateScore();
+                    }
+                }
+            }
+        }
+        
+        // 检查是否到达旗杆
+        function checkFlag() {
+            if (player.x > flag.x - 20 && player.x < flag.x + 20) {
+                levelComplete();
+            }
+        }
+        
+        // 玩家死亡
+        function playerDie() {
+            lives--;
+            document.getElementById("lives").innerText = "❤️".repeat(lives);
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                player.x = 50;
+                player.y = 300;
+                player.vy = 0;
+            }
+        }
+        
+        // 通关
+        function levelComplete() {
+            gameRunning = false;
+            alert("🎉 恭喜通关！金币数：" + coins);
+            document.getElementById("startBtn").innerText = "🎮 重新开始";
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            gameRunning = false;
+            alert("😢 游戏结束！收集金币：" + coins);
+            document.getElementById("startBtn").innerText = "🎮 重新开始";
+        }
+        
+        // 更新分数显示
+        function updateScore() {
+            document.getElementById("coins").innerText = coins;
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.fillStyle = "#5C94FC";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 画云
+            ctx.fillStyle = "#FFF";
+            ctx.beginPath();
+            ctx.arc(100, 80, 30, 0, Math.PI * 2);
+            ctx.arc(140, 80, 40, 0, Math.PI * 2);
+            ctx.arc(180, 80, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(500, 60, 30, 0, Math.PI * 2);
+            ctx.arc(540, 60, 40, 0, Math.PI * 2);
+            ctx.arc(580, 60, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            drawPlatforms();
+            drawPlayer();
+            drawEnemies();
+            drawCoins();
+            drawFlag();
+            
+            updatePlayer();
+            updateEnemies();
+            collectCoins();
+            checkFlag();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (gameRunning) return;
+            
+            coins = 0;
+            lives = 3;
+            currentLevel = 1;
+            updateScore();
+            document.getElementById("lives").innerText = "❤️❤️❤️";
+            document.getElementById("level").innerText = currentLevel;
+            
+            initLevel1();
+            gameRunning = true;
+            document.getElementById("startBtn").innerText = "🎮 游戏中...";
+            gameLoop();
+        }
+        
+        // 键盘控制
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") {
+                keys.left = true;
+            }
+            if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") {
+                keys.right = true;
+            }
+            if (e.key === "w" || e.key === "W" || e.key === " " || e.key === "ArrowUp") {
+                keys.jump = true;
+            }
+        });
+        
+        document.addEventListener("keyup", function(e) {
+            if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") {
+                keys.left = false;
+            }
+            if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") {
+                keys.right = false;
+            }
+            if (e.key === "w" || e.key === "W" || e.key === " " || e.key === "ArrowUp") {
+                keys.jump = false;
+            }
+        });
+        
+        // 初始画面
+        ctx.fillStyle = "#5C94FC";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#000";
+        ctx.font = "20px Arial";
+        ctx.fillText("点击开始游戏", 340, 200);
+    </script>
+</body>
+</html>

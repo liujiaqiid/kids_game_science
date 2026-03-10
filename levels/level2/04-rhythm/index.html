@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L2-04 节奏大师</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        #gameCanvas {
+            border: 3px solid #FF69B4;
+            background: #0f0f23;
+            margin: 20px auto;
+            display: block;
+        }
+        .score-board {
+            font-size: 20px;
+            margin: 10px;
+        }
+        .combo {
+            font-size: 24px;
+            color: #FFD700;
+            margin: 10px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        .controls button {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #FF69B4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        .key-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px;
+        }
+        .key-box {
+            width: 60px;
+            height: 60px;
+            border: 3px solid #FFF;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            background: #333;
+        }
+        .key-box.active {
+            background: #FF69B4;
+            border-color: #FFD700;
+        }
+        .task {
+            background: #0f3460;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 L2-04 节奏大师！</h1>
+    
+    <div class="score-board">
+        得分：<span id="score">0</span> | 连击：<span id="combo">0</span>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    
+    <div class="key-row">
+        <div class="key-box" id="key-D">D</div>
+        <div class="key-box" id="key-F">F</div>
+        <div class="key-box" id="key-J">J</div>
+        <div class="key-box" id="key-K">K</div>
+    </div>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <p>当音符落到下方时，按下对应的键！</p>
+        <p><span class="key">D</span> <span class="key">F</span> <span class="key">J</span> <span class="key">K</span></p>
+    </div>
+    
+    <div class="task">
+        <h3>📝 今日任务</h3>
+        <p>1. 跟随节奏按下对应的键</p>
+        <p>2. 保持连击不断</p>
+        <p>3. 挑战：连击 50 次！</p>
+        
+        <h3>💡 新知识</h3>
+        <p><strong>动画帧</strong>：requestAnimationFrame 让动画更流畅。</p>
+        <p><strong>节奏判定</strong>：根据按键时机判断 Perfect/Good/Miss。</p>
+        <p><strong>连击系统</strong>：连续命中增加连击数和得分倍率。</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let notes = [];
+        let frameCount = 0;
+        let speed = 3;
+        
+        // 4 个轨道
+        const lanes = [50, 150, 250, 350];
+        const keys = ["d", "f", "j", "k"];
+        const keyElements = [
+            document.getElementById("key-D"),
+            document.getElementById("key-F"),
+            document.getElementById("key-J"),
+            document.getElementById("key-K")
+        ];
+        
+        // 判定线位置
+        const hitLineY = 450;
+        const hitWindow = 50; // 判定窗口
+        
+        // 音符类
+        class Note {
+            constructor(lane) {
+                this.lane = lane;
+                this.x = lanes[lane];
+                this.y = -30;
+                this.hit = false;
+                this.missed = false;
+            }
+            
+            update() {
+                this.y += speed;
+            }
+            
+            draw() {
+                if (this.hit) return;
+                
+                // 音符主体
+                ctx.fillStyle = "#FF69B4";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 高光
+                ctx.fillStyle = "#FFB6C1";
+                ctx.beginPath();
+                ctx.arc(this.x - 8, this.y - 8, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 边框
+                ctx.strokeStyle = "#FFF";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+        }
+        
+        // 生成音符
+        function spawnNote() {
+            let lane = Math.floor(Math.random() * 4);
+            notes.push(new Note(lane));
+        }
+        
+        // 画轨道
+        function drawLanes() {
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(lanes[i], 0);
+                ctx.lineTo(lanes[i], canvas.height);
+                ctx.stroke();
+            }
+            
+            // 判定线
+            ctx.strokeStyle = "#FFD700";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, hitLineY);
+            ctx.lineTo(canvas.width, hitLineY);
+            ctx.stroke();
+        }
+        
+        // 画音符
+        function drawNotes() {
+            for (let note of notes) {
+                note.draw();
+            }
+        }
+        
+        // 更新音符位置
+        function updateNotes() {
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let note = notes[i];
+                note.update();
+                
+                // 超过判定线，判定为 Miss
+                if (note.y > hitLineY + hitWindow && !note.hit && !note.missed) {
+                    note.missed = true;
+                    combo = 0;
+                    updateScore();
+                    showFeedback("Miss", "#FF0000");
+                }
+                
+                // 删除超出屏幕的音符
+                if (note.y > canvas.height) {
+                    notes.splice(i, 1);
+                }
+            }
+        }
+        
+        // 按键处理
+        function handleKey(lane) {
+            if (!gameRunning) return;
+            
+            // 高亮按键
+            keyElements[lane].classList.add("active");
+            setTimeout(() => {
+                keyElements[lane].classList.remove("active");
+            }, 100);
+            
+            // 查找最近的音符
+            let hitNote = null;
+            let minDistance = hitWindow;
+            
+            for (let note of notes) {
+                if (note.lane === lane && !note.hit && !note.missed) {
+                    let distance = Math.abs(note.y - hitLineY);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        hitNote = note;
+                    }
+                }
+            }
+            
+            if (hitNote) {
+                hitNote.hit = true;
+                
+                // 根据距离判定
+                if (minDistance < 15) {
+                    combo++;
+                    score += 100 * (1 + combo / 50);
+                    showFeedback("Perfect!", "#FFD700");
+                } else if (minDistance < 30) {
+                    combo++;
+                    score += 50 * (1 + combo / 50);
+                    showFeedback("Good", "#00FF00");
+                } else {
+                    combo++;
+                    score += 20 * (1 + combo / 50);
+                    showFeedback("OK", "#87CEEB");
+                }
+                
+                updateScore();
+                
+                // 移除音符
+                let index = notes.indexOf(hitNote);
+                if (index > -1) {
+                    notes.splice(index, 1);
+                }
+            } else {
+                // 空按
+                combo = 0;
+                updateScore();
+            }
+        }
+        
+        // 显示反馈文字
+        let feedbackText = "";
+        let feedbackColor = "#FFF";
+        let feedbackAlpha = 0;
+        
+        function showFeedback(text, color) {
+            feedbackText = text;
+            feedbackColor = color;
+            feedbackAlpha = 1;
+        }
+        
+        function drawFeedback() {
+            if (feedbackAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = feedbackAlpha;
+                ctx.fillStyle = feedbackColor;
+                ctx.font = "bold 30px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(feedbackText, canvas.width / 2, 200);
+                ctx.restore();
+                
+                feedbackAlpha -= 0.03;
+            }
+        }
+        
+        // 更新分数显示
+        function updateScore() {
+            document.getElementById("score").innerText = Math.floor(score);
+            document.getElementById("combo").innerText = combo;
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.fillStyle = "#0f0f23";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawLanes();
+            drawNotes();
+            updateNotes();
+            drawFeedback();
+            
+            // 生成音符
+            frameCount++;
+            if (frameCount % 40 === 0) {
+                spawnNote();
+            }
+            
+            // 逐渐加速
+            if (frameCount % 600 === 0) {
+                speed += 0.5;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (gameRunning) return;
+            
+            score = 0;
+            combo = 0;
+            notes = [];
+            frameCount = 0;
+            speed = 3;
+            updateScore();
+            
+            gameRunning = true;
+            document.getElementById("startBtn").innerText = "🎮 游戏中...";
+            gameLoop();
+        }
+        
+        // 键盘监听
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "d" || e.key === "D") handleKey(0);
+            if (e.key === "f" || e.key === "F") handleKey(1);
+            if (e.key === "j" || e.key === "J") handleKey(2);
+            if (e.key === "k" || e.key === "K") handleKey(3);
+        });
+        
+        // 初始画面
+        ctx.fillStyle = "#0f0f23";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawLanes();
+        ctx.fillStyle = "#FFF";
+        ctx.font = "20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("点击开始游戏", canvas.width / 2, 250);
+    </script>
+</body>
+</html>
