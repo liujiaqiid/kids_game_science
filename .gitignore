@@ -1,0 +1,20 @@
+# 项目特定文件
+.openclaw/
+memory/
+
+# 智能体配置文件
+AGENTS.md
+SOUL.md
+USER.md
+MEMORY.md
+TOOLS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
